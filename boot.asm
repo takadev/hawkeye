@@ -25,6 +25,20 @@ BS_FilSysType	DB	"FAT12   "
 
 BOOT:
 	CLI
+
+	XOR	AX, AX
+	MOV	DS, AX
+	MOV	ES, AX
+	MOV	FS, AX
+	MOV	GS, AX
+
+	XOR	BX, BX
+	XOR	CX, CX
+	XOR	DX, DX
+
+	MOV	SS, AX
+	MOV	SP, 0xFFFC
+
 	HLT
 
 TIMES 510 - ($ -$$) DB 0
