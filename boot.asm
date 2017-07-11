@@ -23,6 +23,32 @@ BS_VolID	DD	0x20170711
 BS_VolLab	DB	"MyOS       "
 BS_FilSysType	DB	"FAT12   "
 
+DisplayMessage:
+	PUSH	AX
+	PUSH	BX
+StartDispMsg:
+	LODSB
+	OR	AL, AL
+	JZ	.DONE
+	MOV	AH, 0x0E
+	MOV	BH, 0x00
+	MOV	BL, 0x07
+	INT	0x10
+	JMP	StartDispMsg
+.DONE:
+	POP	BX
+	POP	AX
+	RET
+
+ResetFloopyDrive:
+	MOV	AH, 0x00
+	MOV	DL, 0x00
+	INT	0x13
+	JC	FAILURE
+	HLT
+FAILURE:
+	HLT
+
 BOOT:
 	CLI
 
@@ -38,6 +64,27 @@ BOOT:
 
 	MOV	SS, AX
 	MOV	SP, 0xFFFC
+
+	MOV	AH, 0x0E
+	MOV	AL, 0x41
+	MOV	BH, 0x00
+	MOV	BL, 0x07
+	INT	0x10
+	MOV	AH, 0x0E
+	MOV	AL, 0x42
+	MOV	BH, 0x00
+	MOV	BL, 0x07
+	INT	0x10
+	MOV	AH, 0x0E
+	MOV	AL, 0x43
+	MOV	BH, 0x00
+	MOV	BL, 0x07
+	INT	0x10
+
+	ImageName	DB "Good-bye Small World", 0x00
+
+	MOV	SI, ImageName
+	CALL	DisplayMessage
 
 	HLT
 
