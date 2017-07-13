@@ -25,19 +25,25 @@ BS_VolID	DD	0x20170711
 BS_VolLab	DB	"MyOS       "
 BS_FilSysType	DB	"FAT12   "
 
+BX_FAT_ADDR	DW 0x7E00
+
+physicalSector	DB 0x00
+physicalHead	DB 0x00
+physicalTrack	DB 0x00
+
 BOOT:
-	CLI
+	; Initialize Data Segment
+	XOR	AX,AX
+	MOV	DS,AX
+	MOV	ES,AX
+	MOV	FS,AX
+	MOV	GS,AX
 
-	XOR	AX, AX
-	MOV	DS, AX
-	MOV	ES, AX
-	MOV	FS, AX
-	MOV	GS, AX
+	XOR	BX,BX
+	XOR	CX,CX
+	XOR	DX,DX
 
-	XOR	BX, BX
-	XOR	CX, CX
-	XOR	DX, DX
-
+	; Initialize Stack Segment and Stack Pointer
 	MOV	SS, AX
 	MOV	SP, 0xFFFC
 
@@ -50,7 +56,7 @@ LOAD_FAT:
 	XCHG	AX, CX
 
 READ_FAT:
-	CALL	ReadSector
+	CALL	READ_SECTOR
 	ADD	BX, WORD [BPB_BytsPerSec]
 	INC	AX
 	DEC	CX
@@ -60,7 +66,7 @@ READ_FAT:
 FAT_LOADED:
 	HLT
 
-ReadSector:
+READ_SECTOR:
 	MOV	DI, 0x0005
 SECTORLOOP:
 	PUSH	AX
@@ -99,12 +105,6 @@ LBA2CHS:
 	MOV	BYTE [physicalHead], DL
 	MOV	BYTE [physicalTrack], AL
 	RET
-
-physicalSector	DB 0x00
-physicalHead	DB 0x00
-physicalTrack	DB 0x00
-
-BX_FAT_ADDR	DW 0x7E00
 
 TIMES 510 - ($ -$$) DB 0
 
