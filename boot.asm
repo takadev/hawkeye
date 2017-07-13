@@ -2,6 +2,8 @@
 
 ORG	0x7C00
 
+
+; BIOS Parameter Blocks(FAT12)
 JMP	BOOT
 
 BS_OEMName	DB	"MyOS    "
@@ -27,9 +29,17 @@ BS_FilSysType	DB	"FAT12   "
 
 BX_FAT_ADDR	DW 0x7E00
 
+; UNKNOW
+BX_ROOTDIR_ADDR	DW 0x0000
+
+; Physical Sector, Head Track
 physicalSector	DB 0x00
 physicalHead	DB 0x00
 physicalTrack	DB 0x00
+
+; Cluster
+cluster		DB 0x00
+
 
 BOOT:
 	; Initialize Data Segment
@@ -47,6 +57,7 @@ BOOT:
 	MOV	SS, AX
 	MOV	SP, 0xFFFC
 
+; Load FAT from Floopy
 LOAD_FAT:
 	MOV	BX, WORD [BX_FAT_ADDR]
 	ADD	AX, WORD [BPB_RsvdSecCnt]
@@ -54,7 +65,6 @@ LOAD_FAT:
 	MOV	AX, WORD [BPB_FATSz16]
 	MUL	WORD [BPB_NumFATs]
 	XCHG	AX, CX
-
 READ_FAT:
 	CALL	READ_SECTOR
 	ADD	BX, WORD [BPB_BytsPerSec]
@@ -62,17 +72,31 @@ READ_FAT:
 	DEC	CX
 	JCXZ	FAT_LOADED
 	JMP	READ_FAT
-
 FAT_LOADED:
 	HLT
 
+; load root dir
+LOAD_ROOT:
+	MOV	BX, WORD [BX_ROOTDIR_ADDR]
+	XOR	CX, CX
+	XCHG	AX, CX
+	MOV	AX, 0x0020
+	MUL	WORD [BPB_RootEntCnt]
+	ADD	AX, WORD [BPB_BytsPerSec]
+	DEC	AX
+	DIV	WORD [BPB_BytsPerSec]
+	XCHG	AX, CX
+
+; Read 1 Sector
+; Input BX: Address to store the read sector
+;       AX: Sector number of the LBA to be read
 READ_SECTOR:
 	MOV	DI, 0x0005
 SECTORLOOP:
 	PUSH	AX
 	PUSH	BX
 	PUSH	CX
-	CALL	LBA2CHS
+	CALL	LBA2CHA
 	MOV	AH, 0x02
 	MOV	AL, 0x01
 	MOV	CH, BYTE [physicalTrack]
@@ -95,7 +119,8 @@ SUCCESS:
 	POP	AX
 	RET
 
-LBA2CHS:
+; Logical address convert to physical address
+LBA2CHA:
 	XOR	DX, DX
 	DIV	WORD [BPB_SecPerTrk]
 	INC	DL
@@ -105,6 +130,27 @@ LBA2CHS:
 	MOV	BYTE [physicalHead], DL
 	MOV	BYTE [physicalTrack], AL
 	RET
+
+MOV WORD [cluster], 0x0002
+NEW_CLUSTER:
+	MOV	AX, WORD [cluster]
+	MOV	CX, AX
+	MOV	DX, AX
+	SHR	DX, 0x0001
+	ADD	CX, DX
+	MOV	BX, WORD [BX_FAT_ADDR]
+	ADD	BX, CX
+	MOV	DX, WORD [BX]
+	TEST	AX, 0x0001
+	JNZ	ODD_CLUSTER
+	AND	DX, 0x0FFF
+	JMP	LOCAL_DONE
+ODD_CLUSTER:
+	SHR	DX, 0x0004
+LOCAL_DONE:
+	MOV	WORD [cluster], DX
+	CMP	DX, 0x0FF0
+	JB	NEW_CLUSTER
 
 TIMES 510 - ($ -$$) DB 0
 
