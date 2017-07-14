@@ -1,6 +1,34 @@
+MBR_SIZE	equ 512
+SECTOR_SIZE	equ 512
+BOOT_LOAD_ADDR	equ 0x7C00
+
+print_string:
+	push ax
+	mov ah, 0x0E
+.loop:
+	lodsb
+	or al, al
+	jz .done
+	int 0x10
+	jmp .loop
+.done:
+	pop ax
+	ret
+
+print_newline:
+	push ax
+	mov ah, 0x0E
+	mov al, 0x0D
+	int 0x10
+	mov al, 0x0A
+	int 0x10
+	pop ax
+	ret
+
+
 [BITS 16]
 
-ORG	0x7C00
+ORG	BOOT_LOAD_ADDR
 
 
 ; BIOS Parameter Blocks(FAT12)
@@ -152,6 +180,6 @@ LOCAL_DONE:
 	CMP	DX, 0x0FF0
 	JB	NEW_CLUSTER
 
-TIMES 510 - ($ -$$) DB 0
+TIMES SECTOR_SIZE - 2 - ($ -$$) DB 0
 
 DW 0xAA55
