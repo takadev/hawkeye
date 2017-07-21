@@ -1,6 +1,20 @@
-%if 0
-; Print string terminated by 0
-; @si pointer to string
+; Print one character
+%macro putchar 1
+    push ax
+    mov al, %1
+    mov ah, 0x0E
+    int 0x10
+    pop ax
+%endmacro
+
+; Sub-routine print_string wrapper.
+%macro puts 1
+    push si
+    mov si, %1
+    call print_string
+    pop si
+%endmacro
+
 print_string:
     push ax
     mov ah, 0x0E
@@ -13,79 +27,14 @@ print_string:
 
     jmp .loop
 .done:
-
     pop ax
     ret
-
-; Print newline.
-print_newline:
-    push ax
-
-    mov ah, 0x0E
-    mov al, 0x0D
-    int 0x10
-    mov al, 0x0A
-    int 0x10
-    pop ax
-
-    ret
-
-
-; Print 32bit
-print_hex:
-    push eax
-    push ecx
-    push edx
-
-    mov edx, eax
-    mov ecx, (32 / 4)
-    puts hex_prefix
-.loop:
-    rol edx, 4
-    lea bx, [hex_table] ; base addres
-    mov al, dl          ; index
-    and al, 0x0f
-    xlatb
-    putchar al
-    loop .loop
-
-    newline
-
-    pop edx
-    pop ecx
-    pop eax
-    ret
-hex_table:  db '0123456789ABCDEF', 0
-hex_prefix: db '0x'
-
-; Print one character
-%macro putchar 1
-    push ax
-    mov al, %1
-    mov ah, 0x0E
-    int 0x10
-    pop ax
-%endmacro
-
-
-; Sub-routine print_string wrapper.
-%macro puts 1
-    push si
-    mov si, %1
-    call print_string
-    pop si
-%endmacro
-
-%endif
 
 ; Constant
 MBR_SIZE         equ 512
-SECTOR_SIZE      equ 512
 LOAD_ADDR        equ 0x7C00
 NEXT_LOADER_ADDR equ LOAD_ADDR
-STACK_TOP        equ 0x500
-STACK_SIZE       equ 0x1000
-STACK_BOTTOM     equ STACK_TOP + STACK_SIZE
+STACK_BOTTOM     equ 0x1500
 RELOCATE_ADDR    equ STACK_BOTTOM
 PART_TABLE_ADDR  equ RELOCATE_ADDR + MBR_SIZE - 66
 MEMORY_INFOS     equ RELOCATE_ADDR + MBR_SIZE
@@ -94,22 +43,24 @@ PART_ENTRY_SIZE  equ 16
 bits 16
 org RELOCATE_ADDR
 
-
 ; jump start code.
 ; It must be here before any data.
 begin:
-    jmp short main
+    jmp short _main
 
 ; Start loader1
 ; DL is boot disk number
-main:
-    puts 1
+_main:
     mov ax, cs
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
+    putchar "A"
+.fin:
+    hlt
+    jmp .fin
 
     mov sp, STACK_BOTTOM
 
@@ -296,7 +247,6 @@ wait_Keyboard_out:
 ; @ax Begin sector(LBA)
 ; @es:bx pointer to target buffer
 load_sector:
-; {{{
     push cx
     push dx
     push ax
@@ -318,14 +268,12 @@ load_sector:
     pop cx
 
     ret
-;}}}
 
 
 ; Convert LBA to CHS
 ; @ax LBA
 ; @return
 lba_to_chs:
-;{{{
     push bx
     push dx
     push cx
@@ -358,22 +306,12 @@ lba_to_chs:
     pop bx
 
     ret
-; }}}
-
 
 ; Boot fault process (reboot).
 boot_fault:
-; {{{
     int 0x18    ; Boot Fault Routine
-; }}}
-;}}}
-;---------------------------------------------------------------------
 
-
-;---------------------------------------------------------------------
-; Data
-;---------------------------------------------------------------------
-; {{{
+; DATA
 drive_number:     db 0
 head:             db 0
 sector:           db 0
@@ -411,13 +349,9 @@ temporary_gdt:
     db 10010010b
     db 11001111b
     db 0
-; }}}
-;---------------------------------------------------------------------
-
 
 bits 32
 enter_protected_mode:
-;{{{
     cli
 
     mov ax, DATA_SEGMENT
@@ -446,13 +380,8 @@ enter_protected_mode:
 
     ; Jump to second loader.
     jmp NEXT_LOADER_ADDR
-; }}}
 
-
-; Fill the remain of area
-; Partition table begin address is 0x01BE.
-; 440 refer to a 32-bit disk signature address on disk image.
-times (440 - ($ - $$)) db 0
+;times (440 - ($ - $$)) db 0
 loader2_size: ; Size of Loader2 is written by img_util.
 dd 0
 times ((MBR_SIZE - 2) - ($ - $$)) db 0
