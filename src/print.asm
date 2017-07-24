@@ -110,15 +110,17 @@ load_loader2:
 
 	; シリンダの情報をメモリに保存する
 	; ch:tttttttt cl:ttssssssの状態(ch cl)から
-	; ch:ttssssss cl:tttttttt  clとchを入れ替える
-	; ch:ttssssss cl:000000tt  clを右へ6シフトする
-	xchg cl, ch		; clとchを入れ替える 
+	; ch:tttttttt cl:000000tt  clを右へ6シフトする
+	; ch:000000tt cl:tttttttt  clとchを入れ替える
 	shr cl, 6		; 右へ6論理シフトする
+	xchg cl, ch		; clとchを入れ替える
 	inc cx			; cxをインクリメントする
+	mov si
+	call print_string
 	mov [cylinder_num], cx ; メモリへ保存
 
 	; Set begin load segment.
-	mov dx, (NEXT_LOADER_ADDR >> 4)
+	mov dx, (NEXT_LOADER_ADDR >> 4) ; NEXT_LOADER_ADDRを右に4シフトしdxへ格納する
 
 	; Calculate the number of sector for loding.
 	mov ecx, [loader2_size]
@@ -172,6 +174,51 @@ print_newline:
 	int 0x10
 	pop ax
 	ret
+
+
+; Data
+drive_number:     db 0
+head:             db 0
+sector:           db 0
+cylinder:         dw 0
+head_num:         dw 0
+sector_per_track: dw 0
+cylinder_num:     dw 0
+
+for_load_gdt:
+    dw (3 * 8)
+    dd temporary_gdt
+
+CODE_SEGMENT equ (1 * 8)
+DATA_SEGMENT equ (2 * 8)
+temporary_gdt:
+    dw 0x0000 ; Null descriptor
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
+
+    ; Code descriptor
+    db 0xFF
+    db 0xFF
+    dw 0x0000
+    db 0x00
+    db 10011010b
+    db 11001111b
+    db 0
+
+    ; Data descriptor
+    db 0xFF
+    db 0xFF
+    dw 0x0000
+    db 0x00
+    db 10010010b
+    db 11001111b
+    db 0
+
+; Size of Loader2 is written by img_util.
+loader2_size: dd 0
+
+
 
 msg1: db "H", 0
 msg2: db "E", 0
