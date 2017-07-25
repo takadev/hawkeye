@@ -22,27 +22,6 @@
 	pop ax
 %endmacro
 
-; ASCIIコードへ変換してから表示する
-%macro put_num 1
-	push ax
-	push bx
-	push cx
-	push dx
-	mov al, %1
-	div 10
-	mov bh, ah
-	div 10
-	mov ch, ah
-	div 10
-
-	call print_char
-
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-%endmacro
-
 ; Constant
 MBR_SIZE         equ 512
 SECTOR_SIZE      equ 512
@@ -138,55 +117,10 @@ load_loader2:
 	; inc cx			; cxをインクリメントする
 	; mov [cylinder_num], cx ; メモリへ保存
 
-	put_num cl
-	call print_newline
-
-	put_num ch
-	call print_newline
-
     xchg cl, ch
-
-	call print_newline
-	call print_newline
-
-	put_num cl
-	call print_newline
-
-	put_num ch
-	call print_newline
-
     shr cl, 6
-
-	call print_newline
-	call print_newline
-
-	put_num cl
-	call print_newline
-
-	put_num ch
-	call print_newline
-
     inc cx
-
-	call print_newline
-	call print_newline
-
-	put_num cl
-	call print_newline
-
-	put_num ch
-	call print_newline
-
     mov [cylinder_num], cx
-
-	call print_newline
-	call print_newline
-
-	put_num cl
-	call print_newline
-
-	put_num ch
-	call print_newline
 
 	; Set begin load segment.
 	mov dx, (NEXT_LOADER_ADDR >> 4) ; NEXT_LOADER_ADDRを右に4シフトしdxへ格納する
@@ -200,17 +134,74 @@ load_loader2:
 	mov es, dx
 	xor bx, bx
 .loading:
-	; call load_sector
-	; add dx, 0x20
-	; mov es, dx
-	; inc ax
+	call load_sector
+	add dx, 0x20
+	mov es, dx
+	inc ax
 	hlt
 	loop .loading
 
+; セクタのロード es:bx
+; @ax Begin sector(LBA)
+; @es:bx pointer to target buffer
+load_sector:
+    push cx
+    push dx
+    push ax
 
-.fin:
-	hlt
-	jmp .fin
+    call lba_to_chs
+
+    mov ch, [cylinder]
+    mov cl, [cylinder + 1]
+    shl cl, 6
+    or cl, [sector]
+    mov dh, [head]
+    mov dl, [drive_number]
+    mov ax, 0x0201
+    int 0x13
+    jc boot_fault
+
+    pop ax
+    pop dx
+    pop cx
+
+    ret
+
+
+; LBA方式からCHSへ変換
+; @ax LBA
+; @return
+lba_to_chs:
+    push bx
+    push dx
+    push cx
+
+    mov bx, ax
+    mov ax, [head_num] ; Cylinder = LBA / (The number of head * Sector per track)
+    mul word [sector_per_track]
+    mov cx, ax
+    mov ax, bx
+    xor dx, dx  ; dxを0に初期化
+    div cx
+    mov [cylinder], ax
+    mov ax, bx  ; Head = (LBA / Sector per track) % The number of head
+    xor dx, dx  ; dxを0に初期化
+    div word [sector_per_track]
+    xor dx, dx  ; dxを0に初期化
+    div word [head_num]
+    mov [head], dl
+
+    mov ax, bx
+    xor dx, dx  ; Clear for div instruction.
+    div word [sector_per_track] ; Sector = (LBA % Sector per track) + 1
+    inc dx
+    mov [sector], dl
+
+    pop cx
+    pop dx
+    pop bx
+
+    ret
 
 
 ; Boot fault process (reboot).
@@ -288,19 +279,19 @@ temporary_gdt:
 ; Size of Loader2 is written by img_util.
 loader2_size: dd 0
 
+msgh: db "h", 0
+msge: db "e", 0
 
-msg0: db "0", 0x30
-msg1: db "1", 0x31
-msg2: db "2", 0x32
-msg3: db "3", 0x33
-msg4: db "4", 0x34
-msg5: db "5", 0x35
-msg6: db "6", 0x36
-msg7: db "7", 0x37
-msg8: db "8", 0x38
-msg8: db "9", 0x39
-
-
+msg0: db 0x30, 0
+msg1: db 0x31, 0
+msg2: db 0x32, 0
+msg3: db 0x33, 0
+msg4: db 0x34, 0
+msg5: db 0x35, 0
+msg6: db 0x36, 0
+msg7: db 0x37, 0
+msg8: db 0x38, 0
+msg9: db 0x39, 0
 
 
 times 510 - ($ - $$) db 0
