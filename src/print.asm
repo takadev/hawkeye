@@ -22,6 +22,27 @@
 	pop ax
 %endmacro
 
+; ASCIIコードへ変換してから表示する
+%macro put_num 1
+	push ax
+	push bx
+	push cx
+	push dx
+	mov al, %1
+	div 10
+	mov bh, ah
+	div 10
+	mov ch, ah
+	div 10
+
+	call print_char
+
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+%endmacro
+
 ; Constant
 MBR_SIZE         equ 512
 SECTOR_SIZE      equ 512
@@ -112,12 +133,60 @@ load_loader2:
 	; ch:tttttttt cl:ttssssssの状態(ch cl)から
 	; ch:tttttttt cl:000000tt  clを右へ6シフトする
 	; ch:000000tt cl:tttttttt  clとchを入れ替える
-	shr cl, 6		; 右へ6論理シフトする
-	xchg cl, ch		; clとchを入れ替える
-	inc cx			; cxをインクリメントする
-	mov si
-	call print_string
-	mov [cylinder_num], cx ; メモリへ保存
+	; shr cl, 6		; 右へ6論理シフトする
+	; xchg cl, ch		; clとchを入れ替える
+	; inc cx			; cxをインクリメントする
+	; mov [cylinder_num], cx ; メモリへ保存
+
+	put_num cl
+	call print_newline
+
+	put_num ch
+	call print_newline
+
+    xchg cl, ch
+
+	call print_newline
+	call print_newline
+
+	put_num cl
+	call print_newline
+
+	put_num ch
+	call print_newline
+
+    shr cl, 6
+
+	call print_newline
+	call print_newline
+
+	put_num cl
+	call print_newline
+
+	put_num ch
+	call print_newline
+
+    inc cx
+
+	call print_newline
+	call print_newline
+
+	put_num cl
+	call print_newline
+
+	put_num ch
+	call print_newline
+
+    mov [cylinder_num], cx
+
+	call print_newline
+	call print_newline
+
+	put_num cl
+	call print_newline
+
+	put_num ch
+	call print_newline
 
 	; Set begin load segment.
 	mov dx, (NEXT_LOADER_ADDR >> 4) ; NEXT_LOADER_ADDRを右に4シフトしdxへ格納する
@@ -131,10 +200,11 @@ load_loader2:
 	mov es, dx
 	xor bx, bx
 .loading:
-	call load_sector
-	add dx, 0x20
-	mov es, dx
-	inc ax
+	; call load_sector
+	; add dx, 0x20
+	; mov es, dx
+	; inc ax
+	hlt
 	loop .loading
 
 
@@ -219,15 +289,19 @@ temporary_gdt:
 loader2_size: dd 0
 
 
+msg0: db "0", 0x30
+msg1: db "1", 0x31
+msg2: db "2", 0x32
+msg3: db "3", 0x33
+msg4: db "4", 0x34
+msg5: db "5", 0x35
+msg6: db "6", 0x36
+msg7: db "7", 0x37
+msg8: db "8", 0x38
+msg8: db "9", 0x39
 
-msg1: db "H", 0
-msg2: db "E", 0
-msg3: db "L", 0
-msg4: db "O", 0
-msg5: db "W", 0
-msg6: db "O", 0
-msg7: db "R", 0
-msg8: db "D", 0
+
+
 
 times 510 - ($ - $$) db 0
 dw 0xaa55
