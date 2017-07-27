@@ -77,7 +77,7 @@ load_loader2:
 	; もし失敗した場合はboot_faultへジャンプする
 	xor ax, ax ; axを0へ。axが0x00の場合、int 0x13はリセットファンクションとなる
 	int 0x13 ; HDDやROMディスクなどへのアクセスを行う割り込み
-	jc boot_fault ; CFが0の場合(失敗した)、boot_falutへ
+	jc boot_fault ; CFが1の場合(失敗した)、boot_falutへ
 
 	; ドライバのパラメータの取得
 	; 拡張子がサポートされていない場合、
@@ -92,7 +92,7 @@ load_loader2:
 	; DLはドライブ数が格納されます。
 	mov ah, 0x08	; 0x08はドライブパラメータ読み込み
 	int 0x13		; HDDやROMディスクなどへのアクセスを行う割り込み
-	jc boot_fault	; CFが0の場合(失敗した)、boot_falutへ
+	jc boot_fault	; CFが1の場合(失敗した)、boot_falutへ
 
 	; ヘッドの情報をメモリに保存する
 	; dhに最大ヘッド数が格納(ヘッドは0始まり)されるので
