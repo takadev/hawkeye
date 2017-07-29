@@ -147,6 +147,121 @@ LBA2CHS:
 	MOV	BYTE [physicalTrack], AL	
 	RET
 
+
+; Load FAT From Floppy
+LOAD_FAT:
+	; FATを読み込むアドレス0x7E00を引数BXに入れる
+	MOV	BX, WORD [BX_FAT_ADDR]
+
+	; FATの開始セクタを取得
+	ADD	AX, WORD [BPB_RsvdSecCnt]
+
+	; FATの開始セクタを一旦CXレジスタに退避
+	XCHG	AX, CX
+
+	; FATのサイズを計算(FATのセクタ数を取得)
+	MOV	AX, WORD [BPB_FATSz16]
+
+	; FATの予備領域も念のため読み込む
+	; AXの値 × BPB_NumHeads→AXに格納
+	MUL	WORD[BPB_NumFATs]
+				
+	; CXにFATのサイズを、AXにFATの開始セクタを入れる
+	XCHG	AX, CX
+
+READ_FAT:
+	; FATを1セクタずつ読み込む
+	call	ReadSector
+
+	; 1セクタ読み込んだので格納アドレスに512バイトを足す
+	ADD	BX, WORD [BPB_BytsPerSec]
+
+	; 次のセクタを読み込むのでAXに1をたす
+	INC	AX
+
+	; FATのサイズ分読み込むので1セクタ読み込むごとに1減らす	
+	DEC	CX
+
+	; DEC CXでZFが0になれば読み込み終わり
+	JCXZ	FAT_LOADED
+
+	; 次の処理へ
+	JMP	READ_FAT
+
+FAT_LOADED:
+	HLT
+
+
+; ReadSector
+; Read 1 Sector 
+; Input: BX:読み込んだセクタを格納するアドレスを入れておく  
+;      : AX:読み込みたいLBAのセクタ番号
+ReadSector:
+	; エラー発生時5回までリトライする
+	MOV	DI, 0x0005
+SECTORLOOP:
+	; AX、BX、CXをスタックに退避
+	PUSH	AX
+	PUSH	BX
+	PUSH	CX
+
+	; AXのLBAを物理番号に変換
+	CALL	LBA2CHS
+
+	; セクタ読み込みモード
+	MOV	AH, 0x02
+
+	; 1セクタ読み込み
+	MOV	AL, 0x01
+
+	; LBA2CHSで計算したトラック番号
+	MOV	CH, BYTE [physicalTrack]
+
+	; LBA2CHSで計算したセクタ番号
+	MOV	CL, BYTE [physicalSector]
+
+	; LBA2CHSで計算したヘッド番号
+	MOV	DH, BYTE [physicalHead]
+
+	; ドライブ番号（Aドライブ）
+	MOV	DL, BYTE [BS_DrvNum]
+
+	; BIOS処理呼び出し
+	INT	0x13
+
+	; CFを見て成功か失敗かを判断
+	JNC	SUCCESS
+
+	; ここからエラー発生時の処理。ドライブ初期化モード
+	XOR	AX, AX
+
+	; エラーが発生した時はヘッドを元に戻す
+	INT	0x13
+
+	; エラーカウンタを減らす
+	DEC	DI
+
+	; AX、BX、CXの値が変更されたので
+	POP	CX
+	POP	BX
+	POP	AX
+
+	; 退避したいたデータをスタックから元に戻す
+	; DEC DIの計算結果が0でなければ、セクタ読み込みをリトライ
+	JNZ	SECTORLOOP
+	INT	0x18
+SUCCESS:
+	; 成功時の処理レジスタの値を元に戻す
+	POP	CX
+	POP	BX
+	POP	AX
+	RET	
+
+; Variable
+
+; データセグメントの0x7E00にFATを読み込む
+BX_FAT_ADDR		DW 0x7E00
+
 physicalSector	DB 0x00
 physicalHead	DB 0x00
 physicalTrack	DB 0x00
