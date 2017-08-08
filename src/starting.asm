@@ -19,8 +19,53 @@ MAIN2:
 	; データセグメント初期化
 	MOV DS, AX
 	MOV ES, AX
-	; メッセージ表示
-	MOV SI, msgphello
-	CALL DisplayMessage
 	
+	; スタックポインタを0x0009FFFCに設定する
+	MOV	AX, 0x9000
+	MOV	SS, AX
+	MOV	SP, 0xFFFC
+	
+	CALL _setup_gdt	 ; GDT設定処理関数をコール
+
 	HLT
+
+
+; Set up IDT
+_setup_idt: ; GDT設定処理
+	CLI
+	PUSHA
+	LIDT [gdt_toc] ;　GDTを読み込む
+	STI
+	POPA
+	RET
+
+; Global Descriptor Table
+gdt_toc:
+	DW 8*3
+	DD _gdt
+
+_gdt:
+	; Null descriptor
+	DW 0x0000
+	DW 0x0000
+	DW 0x0000
+	DW 0x0000
+
+	; Code descriptor
+	DB 0xFF
+	DB 0xFF
+	DW 0x0000
+	DB 0x00
+	DB 10011010b
+	DB 11001111b
+	DB 0
+
+	; Data descriptor
+	DB 0xFF
+	DB 0xFF
+	DW 0x0000
+	DB 0x00
+	DB 10010010b
+	DB 11001111b
+	DB 0
+

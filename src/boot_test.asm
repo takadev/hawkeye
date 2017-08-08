@@ -81,7 +81,7 @@ FAILURE:
 
 ; フロッピーディスクのFAT領域をメモリへ読み込む
 LOAD_FAT:
-	; FATを読み込むアドレス0x7E00を引数BXに入れる
+	; FATを読み込むアドレス0x7E00をBXに入れる
 	MOV	BX, WORD [BX_FAT_ADDR]
 
 	; FATの開始セクタを取得
