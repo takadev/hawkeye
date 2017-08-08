@@ -4,10 +4,12 @@ ORG 0x500
 
 ; Preprocessor directives
 %include "Print.inc"
+%include "common.inc"
+%include "Fat12.inc"
 
 
 ; Data Section 
-msgphello DB 0x0D, 0x0A, "Hello", 0x0D, 0x0A, 0x00
+LoadingMsg DB 0x0D, 0x0A, "Searching for System...", 0x00
 
 ; Starting Kernel Procedure
 MAIN2:
@@ -20,6 +22,16 @@ MAIN2:
 	MOV DS, AX
 	MOV ES, AX
 	
+	; ローディングメッセージ表示
+	MOV	SI, LoadingMsg
+	CALL DisplayMessage
+
+	; Find_File関数をコール
+	CALL Find_File
+
+	; カーネルイメージが見つかったかどうかチェック
+	CMP	AX, 0
+
 	; スタックポインタを0x0009FFFCに設定する
 	MOV	AX, 0x9000
 	MOV	SS, AX
