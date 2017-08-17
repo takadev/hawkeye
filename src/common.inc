@@ -8,11 +8,11 @@
 %define IMAGE_RMODE_BASE 0x8000
 
 ; カーネルイメージのファイル名(FAT12では11文字にしなければならない)
-KernelImageName	DB "KIMAGE     "
+KernelImageName DB "KIMAGE     "
 
 ; カーネルイメージのファイルサイズを格納する変数
-ImageSize 	DD 0x00000000
-ImageSizeBX	DW 0x0000
-ImageSizeES	DW 0x0000
+ImageSize DD 0x00000000
+ImageSizeBX DW 0x0000
+ImageSizeES DW 0x0000
 
 %endif
